@@ -1,6 +1,6 @@
 # This file is part of the django-environ.
 #
-# Copyright (c) 2021-2022, Serghei Iakovlev <egrep@protonmail.ch>
+# Copyright (c) 2021-2023, Serghei Iakovlev <egrep@protonmail.ch>
 # Copyright (c) 2013-2021, Daniele Faraglia <daniele.faraglia@gmail.com>
 #
 # For the full copyright and license information, please view
@@ -20,9 +20,24 @@ import sys
 import warnings
 from pathlib import Path
 from typing import Any, Dict
-from urllib.parse import ParseResult, parse_qs, quote, unquote, unquote_plus, urlparse, urlunparse
+from urllib.parse import (
+    parse_qs,
+    ParseResult,
+    quote,
+    unquote,
+    unquote_plus,
+    urlparse,
+    urlunparse,
+)
 
-from .compat import DJANGO_POSTGRES, PYMEMCACHE_DRIVER, REDIS_DRIVER, ImproperlyConfigured, json
+from .compat import (
+    DJANGO_POSTGRES,
+    ImproperlyConfigured,
+    json,
+    PYMEMCACHE_DRIVER,
+    REDIS_DRIVER,
+)
+
 from .fileaware_mapping import FileAwareMapping
 
 
@@ -290,7 +305,7 @@ class Env:
         """
         return Path(self.get_value(var, default=default), **kwargs)
 
-    def get_value(self, var, cast=None, default=NOTSET, parse_default=False) -> Any:
+    def get_value(self, var, cast=None, default=NOTSET, parse_default=False):
         """Return value for given environment variable.
 
         :param str var:
@@ -305,7 +320,9 @@ class Env:
         :rtype: typing.IO[typing.Any]
         """
 
-        logger.debug("get '%s' casted as '%s' with default '%s'", var, cast, default)
+        logger.debug(
+            "get '%s' casted as '%s' with default '%s'",
+            var, cast, default)
 
         var_name = f'{self.prefix}{var}'
         if var_name in self.scheme:
@@ -350,7 +367,8 @@ class Env:
 
         # Smart casting
         if self.smart_cast:
-            if cast is None and default is not None and not isinstance(default, NoValue):
+            if cast is None and default is not None and \
+                    not isinstance(default, NoValue):
                 cast = type(default)
 
         value = None if default is None and value == '' else value
@@ -778,7 +796,8 @@ class Env:
         return config
 
     @classmethod
-    def read_env(cls, env_file=None, overwrite=False, encoding='utf8', **overrides) -> None:
+    def read_env(cls, env_file=None, overwrite=False, parse_comments=False,
+                 encoding='utf8', **overrides) -> None:
         r"""Read a .env file into os.environ.
 
         If not given a path to a dotenv path, does filthy magic stack
@@ -798,6 +817,8 @@ class Env:
             the Django settings module from the Django project root.
         :param overwrite: ``overwrite=True`` will force an overwrite of
             existing environment variables.
+        :param parse_comments: Determines whether to recognize and ignore
+           inline comments in the .env file. Default is False.
         :param encoding: The encoding to use when reading the environment file.
         :param \**overrides: Any additional keyword arguments provided directly
             to read_env will be added to the environment. If the key matches an
@@ -839,21 +860,40 @@ class Env:
         for line in content.splitlines():
             m1 = re.match(r'\A(?:export )?([A-Za-z_0-9]+)=(.*)\Z', line)
             if m1:
+
+                # Example:
+                #
+                # line: KEY_499=abc#def
+                # key:  KEY_499
+                # val:  abc#def
                 key, val = m1.group(1), m1.group(2)
-                # Look for value in quotes, ignore post-# comments
-                # (outside quotes)
-                m2 = re.match(r"\A\s*'(?<!\\)(.*)'\s*(#.*\s*)?\Z", val)
-                if m2:
-                    val = m2.group(1)
+
+                if not parse_comments:
+                    # Default behavior
+                    #
+                    # Look for value in single quotes
+                    m2 = re.match(r"\A'(.*)'\Z", val)
+                    if m2:
+                        val = m2.group(1)
                 else:
-                    # For no quotes, find value, ignore comments
-                    # after the first #
-                    m2a = re.match(r"\A(.*?)(#.*\s*)?\Z", val)
-                    if m2a:
-                        val = m2a.group(1)
+                    # Ignore post-# comments (outside quotes).
+                    # Something like ['val'  # comment] becomes ['val'].
+                    m2 = re.match(r"\A\s*'(?<!\\)(.*)'\s*(#.*\s*)?\Z", val)
+                    if m2:
+                        val = m2.group(1)
+                    else:
+                        # For no quotes, find value, ignore comments
+                        # after the first #
+                        m2a = re.match(r"\A(.*?)(#.*\s*)?\Z", val)
+                        if m2a:
+                            val = m2a.group(1)
+
+                # Look for value in double quotes
                 m3 = re.match(r'\A"(.*)"\Z', val)
                 if m3:
-                    val = re.sub(r'\\(.)', _keep_escaped_format_characters, m3.group(1))
+                    val = re.sub(r'\\(.)', _keep_escaped_format_characters,
+                                 m3.group(1))
+
                 overrides[key] = str(val)
             elif not line or line.startswith('#'):
                 # ignore warnings for empty line-breaks or comments

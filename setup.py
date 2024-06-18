@@ -14,6 +14,7 @@ from os import path
 
 from setuptools import find_packages, setup
 
+
 # Use this code block for future deprecations of Python version:
 #
 # import warnings
@@ -41,12 +42,10 @@ META_CONTENTS = read_file(META_PATH)
 
 def load_long_description():
     """Load long description from file README.rst."""
+
     def changes():
         changelog = path.join(PKG_DIR, 'CHANGELOG.rst')
-        pattern = (
-            r'(`(v\d+.\d+.\d+)`_( - \d{1,2}-\w+-\d{4}\r?\n-+\r?\n.*?))'
-            r'\r?\n\r?\n\r?\n`v\d+.\d+.\d+`_'
-        )
+        pattern = r'(`(v\d+.\d+.\d+)`_( - \d{1,2}-\w+-\d{4}\r?\n-+\r?\n.*?))' r'\r?\n\r?\n\r?\n`v\d+.\d+.\d+`_'
         result = re.search(pattern, read_file(changelog), re.S)
 
         return result.group(2) + result.group(3) if result else ''
@@ -59,9 +58,7 @@ def load_long_description():
             head,
             format(title.strip(' .')),
             head,
-            read_file(path.join(PKG_DIR, 'README.rst')).split(
-                '.. -teaser-begin-'
-            )[1],
+            read_file(path.join(PKG_DIR, 'README.rst')).split('.. -teaser-begin-')[1],
             '',
             read_file(path.join(PKG_DIR, 'CONTRIBUTING.rst')),
             '',
@@ -69,9 +66,7 @@ def load_long_description():
             '===================\n',
             changes(),
             '',
-            '`Full changelog <{}/en/latest/changelog.html>`_.'.format(
-                find_meta('url')
-            ),
+            '`Full changelog <{}/en/latest/changelog.html>`_.'.format(find_meta('url')),
             '',
             read_file(path.join(PKG_DIR, 'SECURITY.rst')),
             '',
@@ -89,22 +84,18 @@ def is_canonical_version(version):
     pattern = (
         r'^([1-9][0-9]*!)?(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))'
         r'*((a|b|rc)(0|[1-9][0-9]*))?(\.post(0|[1-9][0-9]*))'
-        r'?(\.dev(0|[1-9][0-9]*))?$')
+        r'?(\.dev(0|[1-9][0-9]*))?$'
+    )
     return re.match(pattern, version) is not None
 
 
 def find_meta(meta):
     """Extract __*meta*__ from META_CONTENTS."""
-    meta_match = re.search(
-        r"^__{meta}__\s+=\s+['\"]([^'\"]*)['\"]".format(meta=meta),
-        META_CONTENTS,
-        re.M
-    )
+    meta_match = re.search(r"^__{meta}__\s+=\s+['\"]([^'\"]*)['\"]".format(meta=meta), META_CONTENTS, re.M)
 
     if meta_match:
         return meta_match.group(1)
-    raise RuntimeError(
-        'Unable to find __%s__ string in package meta file' % meta)
+    raise RuntimeError('Unable to find __%s__ string in package meta file' % meta)
 
 
 def get_version_string():
@@ -114,26 +105,20 @@ def get_version_string():
 
     # Check validity
     if not is_canonical_version(version_string):
-        message = (
-            'The detected version string "{}" is not in canonical '
-            'format as defined in PEP 440.'.format(version_string))
+        message = 'The detected version string "{}" is not in canonical ' 'format as defined in PEP 440.'.format(
+            version_string
+        )
         raise ValueError(message)
 
     return version_string
 
 
 # What does this project relate to?
-KEYWORDS = [
-    'environment',
-    'django',
-    'variables',
-    '12factor',
-]
+KEYWORDS = ['environment', 'django', 'variables', '12factor']
 
 # Classifiers: available ones listed at https://pypi.org/classifiers
 CLASSIFIERS = [
     'Development Status :: 5 - Production/Stable',
-
     'Framework :: Django',
     'Framework :: Django :: 1.11',
     'Framework :: Django :: 2.0',
@@ -145,26 +130,19 @@ CLASSIFIERS = [
     'Framework :: Django :: 4.0',
     'Framework :: Django :: 4.1',
     'Framework :: Django :: 4.2',
-
     'Operating System :: OS Independent',
-
     'Intended Audience :: Developers',
     'Natural Language :: English',
-
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
-    'Programming Language :: Python :: 3.7',
-    'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: Implementation :: CPython',
     'Programming Language :: Python :: Implementation :: PyPy',
-
     'Topic :: Software Development :: Libraries :: Python Modules',
     'Topic :: Utilities',
-
     'License :: OSI Approved :: MIT License',
 ]
 
@@ -196,8 +174,7 @@ EXTRAS_REQUIRE = {
 DEVELOP_REQUIRE = []
 
 # Dependencies that are required to develop package
-EXTRAS_REQUIRE['develop'] = \
-    DEVELOP_REQUIRE + EXTRAS_REQUIRE['testing'] + EXTRAS_REQUIRE['docs']
+EXTRAS_REQUIRE['develop'] = DEVELOP_REQUIRE + EXTRAS_REQUIRE['testing'] + EXTRAS_REQUIRE['docs']
 
 # Project's URLs
 PROJECT_URLS = {
@@ -230,7 +207,7 @@ if __name__ == '__main__':
         platforms=['any'],
         include_package_data=True,
         zip_safe=False,
-        python_requires='>=3.6,<4',
+        python_requires='>=3.9,<4',
         install_requires=INSTALL_REQUIRES,
         dependency_links=DEPENDENCY_LINKS,
         extras_require=EXTRAS_REQUIRE,

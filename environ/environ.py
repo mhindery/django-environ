@@ -18,24 +18,13 @@ import os
 import re
 import sys
 import warnings
-from urllib.parse import (
-    parse_qs,
-    ParseResult,
-    quote,
-    unquote,
-    unquote_plus,
-    urlparse,
-    urlunparse,
-)
+from pathlib import Path
+from typing import Any, Dict
+from urllib.parse import ParseResult, parse_qs, quote, unquote, unquote_plus, urlparse, urlunparse
 
-from .compat import (
-    DJANGO_POSTGRES,
-    ImproperlyConfigured,
-    json,
-    PYMEMCACHE_DRIVER,
-    REDIS_DRIVER,
-)
+from .compat import DJANGO_POSTGRES, PYMEMCACHE_DRIVER, REDIS_DRIVER, ImproperlyConfigured, json
 from .fileaware_mapping import FileAwareMapping
+
 
 Openable = (str, os.PathLike)
 logger = logging.getLogger(__name__)
@@ -83,13 +72,11 @@ class Env:
         env = environ.Env(
             # set casting, default value
             MAIL_ENABLED=(bool, False),
-            SMTP_LOGIN=(str, 'DEFAULT')
+            SMTP_LOGIN=(str, 'DEFAULT'),
         )
 
         # Set the project base directory
-        BASE_DIR = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        )
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         # Take environment variables from .env file
         environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -148,13 +135,7 @@ class Env:
         'redis': REDIS_DRIVER,
         'rediss': REDIS_DRIVER,
     }
-    _CACHE_BASE_OPTIONS = [
-        'TIMEOUT',
-        'KEY_PREFIX',
-        'VERSION',
-        'KEY_FUNCTION',
-        'BINARY',
-    ]
+    _CACHE_BASE_OPTIONS = ['TIMEOUT', 'KEY_PREFIX', 'VERSION', 'KEY_FUNCTION', 'BINARY']
 
     DEFAULT_EMAIL_ENV = 'EMAIL_URL'
     EMAIL_SCHEMES = {
@@ -165,48 +146,39 @@ class Env:
         'consolemail': 'django.core.mail.backends.console.EmailBackend',
         'filemail': 'django.core.mail.backends.filebased.EmailBackend',
         'memorymail': 'django.core.mail.backends.locmem.EmailBackend',
-        'dummymail': 'django.core.mail.backends.dummy.EmailBackend'
+        'dummymail': 'django.core.mail.backends.dummy.EmailBackend',
     }
     _EMAIL_BASE_OPTIONS = ['EMAIL_USE_TLS', 'EMAIL_USE_SSL']
 
     DEFAULT_SEARCH_ENV = 'SEARCH_URL'
     SEARCH_SCHEMES = {
-        "elasticsearch": "haystack.backends.elasticsearch_backend."
-                         "ElasticsearchSearchEngine",
-        "elasticsearch2": "haystack.backends.elasticsearch2_backend."
-                          "Elasticsearch2SearchEngine",
-        "elasticsearch5": "haystack.backends.elasticsearch5_backend."
-                          "Elasticsearch5SearchEngine",
-        "elasticsearch7": "haystack.backends.elasticsearch7_backend."
-                          "Elasticsearch7SearchEngine",
+        "elasticsearch": "haystack.backends.elasticsearch_backend." "ElasticsearchSearchEngine",
+        "elasticsearch2": "haystack.backends.elasticsearch2_backend." "Elasticsearch2SearchEngine",
+        "elasticsearch5": "haystack.backends.elasticsearch5_backend." "Elasticsearch5SearchEngine",
+        "elasticsearch7": "haystack.backends.elasticsearch7_backend." "Elasticsearch7SearchEngine",
         "solr": "haystack.backends.solr_backend.SolrEngine",
         "whoosh": "haystack.backends.whoosh_backend.WhooshEngine",
         "xapian": "haystack.backends.xapian_backend.XapianEngine",
         "simple": "haystack.backends.simple_backend.SimpleEngine",
     }
-    ELASTICSEARCH_FAMILY = [scheme + s for scheme in SEARCH_SCHEMES
-                            if scheme.startswith("elasticsearch")
-                            for s in ('', 's')]
+    ELASTICSEARCH_FAMILY = [
+        scheme + s for scheme in SEARCH_SCHEMES if scheme.startswith("elasticsearch") for s in ('', 's')
+    ]
     CLOUDSQL = 'cloudsql'
 
-    def __init__(self, **scheme):
+    def __init__(self, **scheme) -> None:
         self.smart_cast = True
         self.escape_proxy = False
         self.prefix = ""
         self.scheme = scheme
 
     def __call__(self, var, cast=None, default=NOTSET, parse_default=False):
-        return self.get_value(
-            var,
-            cast=cast,
-            default=default,
-            parse_default=parse_default
-        )
+        return self.get_value(var, cast=cast, default=default, parse_default=parse_default)
 
-    def __contains__(self, var):
+    def __contains__(self, var) -> bool:
         return var in self.ENVIRON
 
-    def str(self, var, default=NOTSET, multiline=False):
+    def str(self, var, default=NOTSET, multiline=False) -> str:
         """
         :rtype: str
         """
@@ -215,7 +187,7 @@ class Env:
             return re.sub(r'(\\r)?\\n', r'\n', value)
         return value
 
-    def bytes(self, var, default=NOTSET, encoding='utf8'):
+    def bytes(self, var, default=NOTSET, encoding='utf8') -> bytes:
         """
         :rtype: bytes
         """
@@ -224,19 +196,19 @@ class Env:
             return value.encode(encoding)
         return value
 
-    def bool(self, var, default=NOTSET):
+    def bool(self, var, default=NOTSET) -> bool:
         """
         :rtype: bool
         """
         return self.get_value(var, cast=bool, default=default)
 
-    def int(self, var, default=NOTSET):
+    def int(self, var, default=NOTSET) -> int:
         """
         :rtype: int
         """
         return self.get_value(var, cast=int, default=default)
 
-    def float(self, var, default=NOTSET):
+    def float(self, var, default=NOTSET) -> float:
         """
         :rtype: float
         """
@@ -248,102 +220,77 @@ class Env:
         """
         return self.get_value(var, cast=json.loads, default=default)
 
-    def list(self, var, cast=None, default=NOTSET):
+    def list(self, var, cast=None, default=NOTSET) -> list:
         """
         :rtype: list
         """
-        return self.get_value(
-            var,
-            cast=list if not cast else [cast],
-            default=default
-        )
+        return self.get_value(var, cast=list if not cast else [cast], default=default)
 
-    def tuple(self, var, cast=None, default=NOTSET):
+    def tuple(self, var, cast=None, default=NOTSET) -> tuple:
         """
         :rtype: tuple
         """
-        return self.get_value(
-            var,
-            cast=tuple if not cast else (cast,),
-            default=default
-        )
+        return self.get_value(var, cast=tuple if not cast else (cast,), default=default)
 
-    def dict(self, var, cast=dict, default=NOTSET):
+    def dict(self, var, cast=dict, default=NOTSET) -> Dict:
         """
         :rtype: dict
         """
         return self.get_value(var, cast=cast, default=default)
 
-    def url(self, var, default=NOTSET):
+    def url(self, var, default=NOTSET) -> ParseResult:
         """
         :rtype: urllib.parse.ParseResult
         """
-        return self.get_value(
-            var,
-            cast=urlparse,
-            default=default,
-            parse_default=True
-        )
+        return self.get_value(var, cast=urlparse, default=default, parse_default=True)
 
-    def db_url(self, var=DEFAULT_DATABASE_ENV, default=NOTSET, engine=None):
+    def db_url(self, var=DEFAULT_DATABASE_ENV, default=NOTSET, engine=None) -> Dict:
         """Returns a config dictionary, defaulting to DATABASE_URL.
 
         The db method is an alias for db_url.
 
         :rtype: dict
         """
-        return self.db_url_config(
-            self.get_value(var, default=default),
-            engine=engine
-        )
+        return self.db_url_config(self.get_value(var, default=default), engine=engine)
 
     db = db_url
 
-    def cache_url(self, var=DEFAULT_CACHE_ENV, default=NOTSET, backend=None):
+    def cache_url(self, var=DEFAULT_CACHE_ENV, default=NOTSET, backend=None) -> Dict:
         """Returns a config dictionary, defaulting to CACHE_URL.
 
         The cache method is an alias for cache_url.
 
         :rtype: dict
         """
-        return self.cache_url_config(
-            self.url(var, default=default),
-            backend=backend
-        )
+        return self.cache_url_config(self.url(var, default=default), backend=backend)
 
     cache = cache_url
 
-    def email_url(self, var=DEFAULT_EMAIL_ENV, default=NOTSET, backend=None):
+    def email_url(self, var=DEFAULT_EMAIL_ENV, default=NOTSET, backend=None) -> Dict:
         """Returns a config dictionary, defaulting to EMAIL_URL.
 
         The email method is an alias for email_url.
 
         :rtype: dict
         """
-        return self.email_url_config(
-            self.url(var, default=default),
-            backend=backend
-        )
+        return self.email_url_config(self.url(var, default=default), backend=backend)
 
     email = email_url
 
-    def search_url(self, var=DEFAULT_SEARCH_ENV, default=NOTSET, engine=None):
+    def search_url(self, var=DEFAULT_SEARCH_ENV, default=NOTSET, engine=None) -> Dict:
         """Returns a config dictionary, defaulting to SEARCH_URL.
 
         :rtype: dict
         """
-        return self.search_url_config(
-            self.url(var, default=default),
-            engine=engine
-        )
+        return self.search_url_config(self.url(var, default=default), engine=engine)
 
-    def path(self, var, default=NOTSET, **kwargs):
+    def path(self, var, default=NOTSET, **kwargs) -> Path:
         """
         :rtype: Path
         """
         return Path(self.get_value(var, default=default), **kwargs)
 
-    def get_value(self, var, cast=None, default=NOTSET, parse_default=False):
+    def get_value(self, var, cast=None, default=NOTSET, parse_default=False) -> Any:
         """Return value for given environment variable.
 
         :param str var:
@@ -358,9 +305,7 @@ class Env:
         :rtype: typing.IO[typing.Any]
         """
 
-        logger.debug(
-            "get '%s' casted as '%s' with default '%s'",
-            var, cast, default)
+        logger.debug("get '%s' casted as '%s' with default '%s'", var, cast, default)
 
         var_name = f'{self.prefix}{var}'
         if var_name in self.scheme:
@@ -405,8 +350,7 @@ class Env:
 
         # Smart casting
         if self.smart_cast:
-            if cast is None and default is not None and \
-                    not isinstance(default, NoValue):
+            if cast is None and default is not None and not isinstance(default, NoValue):
                 cast = type(default)
 
         value = None if default is None and value == '' else value
@@ -441,16 +385,12 @@ class Env:
             key_cast = cast.get('key', str)
             value_cast = cast.get('value', str)
             value_cast_by_key = cast.get('cast', {})
-            value = dict(map(
-                lambda kv: (
-                    key_cast(kv[0]),
-                    cls.parse_value(
-                        kv[1],
-                        value_cast_by_key.get(kv[0], value_cast)
-                    )
-                ),
-                [val.split('=') for val in value.split(';') if val]
-            ))
+            value = dict(
+                map(
+                    lambda kv: (key_cast(kv[0]), cls.parse_value(kv[1], value_cast_by_key.get(kv[0], value_cast))),
+                    [val.split('=') for val in value.split(';') if val],
+                )
+            )
         elif cast is dict:
             value = dict([v.split('=', 1) for v in value.split(',') if v])
         elif cast is list:
@@ -507,10 +447,7 @@ class Env:
                 # this is a special case, because if we pass this URL into
                 # urlparse, urlparse will choke trying to interpret "memory"
                 # as a port number
-                return {
-                    'ENGINE': cls.DB_SCHEMES['sqlite'],
-                    'NAME': ':memory:'
-                }
+                return {'ENGINE': cls.DB_SCHEMES['sqlite'], 'NAME': ':memory:'}
                 # note: no other settings are required for sqlite
             try:
                 url = urlparse(url)
@@ -534,11 +471,7 @@ class Env:
                 # sqlalchemy)
                 path = ':memory:'
             if url.netloc:
-                warnings.warn(
-                    f'SQLite URL contains host component {url.netloc!r}, '
-                    'it will be ignored',
-                    stacklevel=3
-                )
+                warnings.warn(f'SQLite URL contains host component {url.netloc!r}, ' 'it will be ignored', stacklevel=3)
         if url.scheme == 'ldap':
             path = f'{url.scheme}://{url.hostname}'
             if url.port:
@@ -547,14 +480,7 @@ class Env:
         user_host = url.netloc.rsplit('@', 1)
         if url.scheme in cls.POSTGRES_FAMILY and ',' in user_host[-1]:
             # Parsing postgres cluster dsn
-            hinfo = list(
-                itertools.zip_longest(
-                    *(
-                        host.rsplit(':', 1)
-                        for host in user_host[-1].split(',')
-                    )
-                )
-            )
+            hinfo = list(itertools.zip_longest(*(host.rsplit(':', 1) for host in user_host[-1].split(','))))
             hostname = ','.join(hinfo[0])
             port = ','.join(filter(None, hinfo[1])) if len(hinfo) == 2 else ''
         else:
@@ -562,18 +488,17 @@ class Env:
             port = url.port
 
         # Update with environment configuration.
-        config.update({
-            'NAME': path or '',
-            'USER': _cast_urlstr(url.username) or '',
-            'PASSWORD': _cast_urlstr(url.password) or '',
-            'HOST': hostname or '',
-            'PORT': _cast_int(port) or '',
-        })
+        config.update(
+            {
+                'NAME': path or '',
+                'USER': _cast_urlstr(url.username) or '',
+                'PASSWORD': _cast_urlstr(url.password) or '',
+                'HOST': hostname or '',
+                'PORT': _cast_int(port) or '',
+            }
+        )
 
-        if (
-                url.scheme in cls.POSTGRES_FAMILY and path.startswith('/')
-                or cls.CLOUDSQL in path and path.startswith('/')
-        ):
+        if url.scheme in cls.POSTGRES_FAMILY and path.startswith('/') or cls.CLOUDSQL in path and path.startswith('/'):
             config['HOST'], config['NAME'] = path.rsplit('/', 1)
 
         if url.scheme == 'oracle' and path == '':
@@ -633,16 +558,11 @@ class Env:
         if len(location) == 1:
             location = location[0]
 
-        config = {
-            'BACKEND': cls.CACHE_SCHEMES[url.scheme],
-            'LOCATION': location,
-        }
+        config = {'BACKEND': cls.CACHE_SCHEMES[url.scheme], 'LOCATION': location}
 
         # Add the drive to LOCATION
         if url.scheme == 'filecache':
-            config.update({
-                'LOCATION': url.netloc + url.path,
-            })
+            config.update({'LOCATION': url.netloc + url.path})
 
         # urlparse('pymemcache://127.0.0.1:11211')
         # => netloc='127.0.0.1:11211', path=''
@@ -653,16 +573,13 @@ class Env:
         # urlparse('memcache:///tmp/memcached.sock')
         # => netloc='', path='/tmp/memcached.sock'
         if not url.netloc and url.scheme in ['memcache', 'pymemcache']:
-            config.update({
-                'LOCATION': 'unix:' + url.path,
-            })
+            config.update({'LOCATION': 'unix:' + url.path})
         elif url.scheme.startswith('redis'):
             if url.hostname:
                 scheme = url.scheme.replace('cache', '')
             else:
                 scheme = 'unix'
-            locations = [scheme + '://' + loc + url.path
-                         for loc in url.netloc.split(',')]
+            locations = [scheme + '://' + loc + url.path for loc in url.netloc.split(',')]
             if len(locations) == 1:
                 config['LOCATION'] = locations[0]
             else:
@@ -704,13 +621,15 @@ class Env:
         path = unquote_plus(path.split('?', 2)[0])
 
         # Update with environment configuration
-        config.update({
-            'EMAIL_FILE_PATH': path,
-            'EMAIL_HOST_USER': _cast_urlstr(url.username),
-            'EMAIL_HOST_PASSWORD': _cast_urlstr(url.password),
-            'EMAIL_HOST': url.hostname,
-            'EMAIL_PORT': _cast_int(url.port),
-        })
+        config.update(
+            {
+                'EMAIL_FILE_PATH': path,
+                'EMAIL_HOST_USER': _cast_urlstr(url.username),
+                'EMAIL_HOST_PASSWORD': _cast_urlstr(url.password),
+                'EMAIL_HOST': url.hostname,
+                'EMAIL_PORT': _cast_int(url.port),
+            }
+        )
 
         if backend:
             config['EMAIL_BACKEND'] = backend
@@ -766,9 +685,7 @@ class Env:
             path = ""
             index = split[0]
 
-        cfg['URL'] = urlunparse(
-            ('https' if secure else 'http', url[1], path, '', '', '')
-        )
+        cfg['URL'] = urlunparse(('https' if secure else 'http', url[1], path, '', '', ''))
         if 'TIMEOUT' in params:
             cfg['TIMEOUT'] = cls.parse_value(params['TIMEOUT'][0], int)
         if 'KWARGS' in params:
@@ -845,8 +762,7 @@ class Env:
             return config
 
         if url.scheme in cls.ELASTICSEARCH_FAMILY:
-            config.update(cls._parse_elasticsearch_search_params(
-                url, path, secure, params))
+            config.update(cls._parse_elasticsearch_search_params(url, path, secure, params))
             return config
 
         config['PATH'] = '/' + path
@@ -862,8 +778,7 @@ class Env:
         return config
 
     @classmethod
-    def read_env(cls, env_file=None, overwrite=False, encoding='utf8',
-                 **overrides):
+    def read_env(cls, env_file=None, overwrite=False, encoding='utf8', **overrides) -> None:
         r"""Read a .env file into os.environ.
 
         If not given a path to a dotenv path, does filthy magic stack
@@ -891,14 +806,11 @@ class Env:
         if env_file is None:
             # pylint: disable=protected-access
             frame = sys._getframe()
-            env_file = os.path.join(
-                os.path.dirname(frame.f_back.f_code.co_filename),
-                '.env'
-            )
+            env_file = os.path.join(os.path.dirname(frame.f_back.f_code.co_filename), '.env')
             if not os.path.exists(env_file):
                 logger.info(
-                    "%s doesn't exist - if you're not configuring your "
-                    "environment separately, create one.", env_file)
+                    "%s doesn't exist - if you're not configuring your " "environment separately, create one.", env_file
+                )
                 return
 
         try:
@@ -911,13 +823,13 @@ class Env:
                     content = f.read()
         except OSError:
             logger.info(
-                "%s not found - if you're not configuring your "
-                "environment separately, check this.", env_file)
+                "%s not found - if you're not configuring your " "environment separately, check this.", env_file
+            )
             return
 
         logger.debug('Read environment variables from: %s', env_file)
 
-        def _keep_escaped_format_characters(match):
+        def _keep_escaped_format_characters(match) -> str:
             """Keep escaped newline/tabs in quoted strings"""
             escaped_char = match.group(1)
             if escaped_char in 'rnt':
@@ -941,8 +853,7 @@ class Env:
                         val = m2a.group(1)
                 m3 = re.match(r'\A"(.*)"\Z', val)
                 if m3:
-                    val = re.sub(r'\\(.)', _keep_escaped_format_characters,
-                                 m3.group(1))
+                    val = re.sub(r'\\(.)', _keep_escaped_format_characters, m3.group(1))
                 overrides[key] = str(val)
             elif not line or line.startswith('#'):
                 # ignore warnings for empty line-breaks or comments
@@ -953,8 +864,8 @@ class Env:
         def set_environ(envval):
             """Return lambda to set environ.
 
-             Use setdefault unless overwrite is specified.
-             """
+            Use setdefault unless overwrite is specified.
+            """
             if overwrite:
                 return lambda k, v: envval.update({k: str(v)})
             return lambda k, v: envval.setdefault(k, str(v))
@@ -980,6 +891,7 @@ class FileAwareEnv(Env):
     ``env("SECRET_KEY")`` would find the related variable, returning the file
     contents rather than ever looking up a ``SECRET_KEY`` environment variable.
     """
+
     ENVIRON = FileAwareMapping()
 
 
@@ -1013,7 +925,6 @@ class Path:
 
     # pylint: disable=keyword-arg-before-vararg
     def __init__(self, start='', *paths, **kwargs):
-
         super().__init__()
 
         if kwargs.get('is_file', False):
@@ -1050,9 +961,7 @@ class Path:
 
         raise TypeError(
             "unsupported operand type(s) for -: '{self}' and '{other}' "
-            "unless value of {self} ends with value of {other}".format(
-                self=type(self), other=type(other)
-            )
+            "unless value of {self} ends with value of {other}".format(self=type(self), other=type(other))
         )
 
     def __invert__(self):
@@ -1091,7 +1000,5 @@ class Path:
     def _absolute_join(base, *paths, **kwargs):
         absolute_path = os.path.abspath(os.path.join(base, *paths))
         if kwargs.get('required', False) and not os.path.exists(absolute_path):
-            raise ImproperlyConfigured(
-                f'Create required path: {absolute_path}'
-            )
+            raise ImproperlyConfigured(f'Create required path: {absolute_path}')
         return absolute_path
